@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Vote360 - Cast Your Vote</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    body {
+      background: #f4f6f9;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .vote-card {
+      box-shadow: 0 0 12px rgba(0,0,0,0.08);
+      border-radius: 10px;
+      transition: 0.3s;
+    }
+    .vote-card:hover {
+      transform: scale(1.01);
+      box-shadow: 0 0 18px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body class="container py-5">
+
+  <div class="text-center mb-5">
+    <h2>🎉 Vote360 Voting Platform</h2>
+    <p>Select your nominee and cast your vote!</p>
+  </div>
+
+  <form id="voteForm" class="row g-4 justify-content-center">
+    
+    <div class="col-md-4">
+      <label class="form-label">Event</label>
+      <select id="eventSelect" class="form-select" required></select>
+    </div>
+
+    <div class="col-md-4">
+      <label class="form-label">Category</label>
+      <select id="categorySelect" class="form-select" required></select>
+    </div>
+
+    <div class="col-md-4">
+      <label class="form-label">Nominee</label>
+      <select id="nomineeSelect" class="form-select" required></select>
+    </div>
+
+    <div class="col-md-4">
+      <label class="form-label">Number of Votes</label>
+      <input type="number" id="votesInput" class="form-control" min="1" value="1" required />
+    </div>
+
+    <div class="col-md-4">
+      <label class="form-label">Amount (GHS)</label>
+      <input type="text" id="amountDisplay" class="form-control" readonly />
+    </div>
+
+    <div class="col-md-8 d-grid mt-3">
+      <button type="submit" id="voteBtn" class="btn btn-primary btn-lg">Vote Now</button>
+    </div>
+
+  </form>
+
+  <script>
+    const eventSelect = document.getElementById('eventSelect');
+    const categorySelect = document.getElementById('categorySelect');
+    const nomineeSelect = document.getElementById('nomineeSelect');
+    const votesInput = document.getElementById('votesInput');
+    const amountDisplay = document.getElementById('amountDisplay');
+
+    // Auto-calculate amount
+    votesInput.addEventListener('input', () => {
+      const votes = parseInt(votesInput.value) || 0;
+      amountDisplay.value = (votes * 1).toFixed(2);
+    });
+
+    // Fetch and populate events, categories, nominees
+    function loadEvents() {
+      google.script.run.withSuccessHandler(events => {
+        eventSelect.innerHTML = events.map(ev => `<option value="${ev.id}">${ev.title}</option>`).join('');
+        loadCategories();
+      }).getActiveEvents();
+    }
+
+    function loadCategories() {
+      const eventId = eventSelect.value;
+      google.script.run.withSuccessHandler(cats => {
+        categorySelect.innerHTML = cats.map(cat => `<option value="${cat.id}">${cat.title}</option>`).join('');
+        loadNominees();
+      }).getCategoriesByEvent(eventId);
+    }
+
+    function loadNominees() {
+      const categoryId = categorySelect.value;
+      google.script.run.withSuccessHandler(noms => {
+        nomineeSelect.innerHTML = noms.map(nom => `<option value="${nom.id}">${nom.name}</option>`).join('');
+      }).getNomineesByCategory(categoryId);
+    }
+
+    eventSelect.addEventListener('change', loadCategories);
+    categorySelect.addEventListener('change', loadNominees);
+
+    // Simulated vote submit
+    document.getElementById('voteForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const eventId = eventSelect.value;
+      const categoryId = categorySelect.value;
+      const nomineeId = nomineeSelect.value;
+      const votes = parseInt(votesInput.value);
+      const amount = votes;
+
+      Swal.fire({
+        title: 'Processing Vote...',
+        didOpen: () => Swal.showLoading()
+      });
+
+      google.script.run.withSuccessHandler(response => {
+        Swal.fire('Success!', 'Your vote has been cast successfully.', 'success');
+        votesInput.value = 1;
+        amountDisplay.value = '1.00';
+      }).recordMockVote({ eventId, categoryId, nomineeId, votes, amount });
+    });
+
+    loadEvents();
+    amountDisplay.value = '1.00';
+  </script>
+
+</body>
+</html>
