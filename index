@@ -1,130 +1,123 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
   <title>Vote360 - Cast Your Vote</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <style>
-    body {
-      background: #f4f6f9;
-      font-family: 'Segoe UI', sans-serif;
-    }
-    .vote-card {
-      box-shadow: 0 0 12px rgba(0,0,0,0.08);
-      border-radius: 10px;
-      transition: 0.3s;
-    }
-    .vote-card:hover {
-      transform: scale(1.01);
-      box-shadow: 0 0 18px rgba(0,0,0,0.1);
-    }
-  </style>
 </head>
 <body class="container py-5">
-
-  <div class="text-center mb-5">
-    <h2>🎉 Vote360 Voting Platform</h2>
-    <p>Select your nominee and cast your vote!</p>
-  </div>
+  <h2 class="text-center mb-4">🎉 Vote360 - Cast Your Vote</h2>
 
   <form id="voteForm" class="row g-4 justify-content-center">
-    
     <div class="col-md-4">
-      <label class="form-label">Event</label>
+      <label>Event</label>
       <select id="eventSelect" class="form-select" required></select>
     </div>
 
     <div class="col-md-4">
-      <label class="form-label">Category</label>
+      <label>Category</label>
       <select id="categorySelect" class="form-select" required></select>
     </div>
 
     <div class="col-md-4">
-      <label class="form-label">Nominee</label>
+      <label>Nominee</label>
       <select id="nomineeSelect" class="form-select" required></select>
     </div>
 
     <div class="col-md-4">
-      <label class="form-label">Number of Votes</label>
+      <label>Votes</label>
       <input type="number" id="votesInput" class="form-control" min="1" value="1" required />
     </div>
 
     <div class="col-md-4">
-      <label class="form-label">Amount (GHS)</label>
+      <label>Amount (GHS)</label>
       <input type="text" id="amountDisplay" class="form-control" readonly />
     </div>
 
-    <div class="col-md-8 d-grid mt-3">
-      <button type="submit" id="voteBtn" class="btn btn-primary btn-lg">Vote Now</button>
+    <div class="col-md-8 d-grid">
+      <button type="submit" class="btn btn-primary btn-lg" id="voteBtn">Vote Now</button>
     </div>
-
   </form>
 
   <script>
-    const eventSelect = document.getElementById('eventSelect');
-    const categorySelect = document.getElementById('categorySelect');
-    const nomineeSelect = document.getElementById('nomineeSelect');
-    const votesInput = document.getElementById('votesInput');
-    const amountDisplay = document.getElementById('amountDisplay');
+    const API_URL = "https://script.google.com/macros/s/YOUR_WEB_APP_URL/exec";
+    const TOKEN = "abc123";  // Same as AUTH_TOKEN in your backend
 
-    // Auto-calculate amount
-    votesInput.addEventListener('input', () => {
-      const votes = parseInt(votesInput.value) || 0;
+    const eventSelect = document.getElementById("eventSelect");
+    const categorySelect = document.getElementById("categorySelect");
+    const nomineeSelect = document.getElementById("nomineeSelect");
+    const votesInput = document.getElementById("votesInput");
+    const amountDisplay = document.getElementById("amountDisplay");
+
+    votesInput.addEventListener("input", () => {
+      const votes = parseInt(votesInput.value || 1);
       amountDisplay.value = (votes * 1).toFixed(2);
     });
 
-    // Fetch and populate events, categories, nominees
-    function loadEvents() {
-      google.script.run.withSuccessHandler(events => {
-        eventSelect.innerHTML = events.map(ev => `<option value="${ev.id}">${ev.title}</option>`).join('');
-        loadCategories();
-      }).getActiveEvents();
+    async function fetchData(action, payload = {}) {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + TOKEN
+        },
+        body: JSON.stringify({ action, ...payload })
+      });
+      return res.json();
     }
 
-    function loadCategories() {
+    async function loadEvents() {
+      const events = await fetchData("getActiveEvents");
+      eventSelect.innerHTML = events.map(ev => `<option value="${ev.id}">${ev.title}</option>`).join("");
+      await loadCategories();
+    }
+
+    async function loadCategories() {
       const eventId = eventSelect.value;
-      google.script.run.withSuccessHandler(cats => {
-        categorySelect.innerHTML = cats.map(cat => `<option value="${cat.id}">${cat.title}</option>`).join('');
-        loadNominees();
-      }).getCategoriesByEvent(eventId);
+      const categories = await fetchData("getCategoriesByEvent", { eventId });
+      categorySelect.innerHTML = categories.map(cat => `<option value="${cat.id}">${cat.title}</option>`).join("");
+      await loadNominees();
     }
 
-    function loadNominees() {
+    async function loadNominees() {
       const categoryId = categorySelect.value;
-      google.script.run.withSuccessHandler(noms => {
-        nomineeSelect.innerHTML = noms.map(nom => `<option value="${nom.id}">${nom.name}</option>`).join('');
-      }).getNomineesByCategory(categoryId);
+      const nominees = await fetchData("getNomineesByCategory", { categoryId });
+      nomineeSelect.innerHTML = nominees.map(nom => `<option value="${nom.id}">${nom.name}</option>`).join("");
     }
 
-    eventSelect.addEventListener('change', loadCategories);
-    categorySelect.addEventListener('change', loadNominees);
+    eventSelect.addEventListener("change", loadCategories);
+    categorySelect.addEventListener("change", loadNominees);
 
-    // Simulated vote submit
-    document.getElementById('voteForm').addEventListener('submit', function(e) {
+    document.getElementById("voteForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const eventId = eventSelect.value;
-      const categoryId = categorySelect.value;
-      const nomineeId = nomineeSelect.value;
       const votes = parseInt(votesInput.value);
-      const amount = votes;
+      const amount = votes * 1;
 
-      Swal.fire({
-        title: 'Processing Vote...',
-        didOpen: () => Swal.showLoading()
+      Swal.fire({ title: 'Submitting your vote...', didOpen: () => Swal.showLoading() });
+
+      const res = await fetchData("recordVote", {
+        eventId: eventSelect.value,
+        categoryId: categorySelect.value,
+        nomineeId: nomineeSelect.value,
+        votes,
+        amount,
+        voter: "Anonymous"
       });
 
-      google.script.run.withSuccessHandler(response => {
-        Swal.fire('Success!', 'Your vote has been cast successfully.', 'success');
+      if (res.success) {
+        Swal.fire("✅ Vote Cast!", res.message, "success");
         votesInput.value = 1;
-        amountDisplay.value = '1.00';
-      }).recordMockVote({ eventId, categoryId, nomineeId, votes, amount });
+        amountDisplay.value = "1.00";
+      } else {
+        Swal.fire("❌ Error", res.error || "Vote failed.", "error");
+      }
     });
 
+    // Initialize
     loadEvents();
-    amountDisplay.value = '1.00';
+    amountDisplay.value = "1.00";
   </script>
-
 </body>
 </html>
