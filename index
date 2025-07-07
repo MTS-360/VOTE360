@@ -42,7 +42,7 @@
   </form>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/YOUR_WEB_APP_URL/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbwjruVg8rcp01BmSZOWuyBh1I29oDFiLaJ-HTPkp0SRXxDjWjEAeWu9w0ACguFWCuLY/exec";
     const TOKEN = "abc123";  // Same as AUTH_TOKEN in your backend
 
     const eventSelect = document.getElementById("eventSelect");
